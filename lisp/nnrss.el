@@ -144,7 +144,7 @@ for decoding when the cdr that the data specify is not available.")
 		    (or (nth 5 e) "")
 		    "\t"
 		    ;; id
-		    (format "<%d@%s.nnrss>" (car e) group)
+		    (nnrss-message-id e)
 		    "\t"
 		    ;; refs
 		    "\t"
@@ -194,9 +194,11 @@ for decoding when the cdr that the data specify is not available.")
 (deffoo nnrss-request-article (article &optional group server buffer)
   (setq group (nnrss-decode-group-name group))
   (when (stringp article)
-    (setq article (if (string-match "\\`<\\([0-9]+\\)@" article)
-		      (string-to-number (match-string 1 article))
-		    0)))
+    (setq article
+	  (cond ((nnrss-article-by-id article))
+		((string-match "\\`<\\([0-9]+\\)@" article)
+		 (string-to-number (match-string 1 article)))
+		(t 0))))
   (nnrss-possibly-change-group group server)
   (let ((e (assq article nnrss-group-data))
 	(nntp-server-buffer (or buffer nntp-server-buffer))
@@ -294,12 +296,7 @@ for decoding when the cdr that the data specify is not available.")
 	(goto-char (point-min))
 	(search-forward "\n\n")
 	(forward-line -1)
-	(insert (format "Message-ID: <%d@%s.nnrss>\n"
-			(car e)
-			(let ((rfc2047-encoding-type 'mime)
-			      rfc2047-encode-max-chars)
-			  (rfc2047-encode-string
-			   (gnus-replace-in-string group "[\t\n ]+" "_")))))
+	(insert "Message-ID: " (nnrss-message-id e) "\n")
 	(when nnrss-content-function
 	  (funcall nnrss-content-function e group article))))
     (cond
@@ -558,7 +555,7 @@ which RSS 2.0 allows."
     (when (file-exists-p file)
       (load file nil t t)
       (dolist (e nnrss-group-data)
-	(puthash (nth 9 e) t nnrss-group-hashtb)
+	(puthash (nth 9 e) (car e) nnrss-group-hashtb)
 	(when (and (car e) (> nnrss-group-min (car e)))
 	  (setq nnrss-group-min (car e)))
 	(when (and (car e) (< nnrss-group-max (car e)))
@@ -635,6 +632,14 @@ which RSS 2.0 allows."
     (while (search-forward "\n" nil t)
       (delete-char -1))
     (buffer-string)))
+
+;;; Message-ID functions
+(defun nnrss-message-id (e)
+  (format "<%s@nnrss>" (nth 9 e)))
+
+(defun nnrss-article-by-id (msgid)
+  (when (string-match "\\`<\\([0-9a-f]+\\)@nnrss" msgid)
+    (gethash (match-string 1 msgid) nnrss-group-hashtb)))
 
 ;;; Snarf functions
 (defun nnrss-make-hash-index (item)
@@ -730,7 +735,7 @@ which RSS 2.0 allows."
 	  comments
 	  hash-index)
 	 nnrss-group-data)
-	(puthash hash-index t nnrss-group-hashtb)
+	(puthash hash-index nnrss-group-max nnrss-group-hashtb)
 	(setq changed t))
       (setq extra nil))
     (when changed
