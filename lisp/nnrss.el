@@ -113,6 +113,9 @@ The cdr of each element is used to decode data if it is available when
 the car is what the data specify as the encoding.  Or, the car is used
 for decoding when the cdr that the data specify is not available.")
 
+(defvar nnrss-rss-format-hook nil
+  "A hook run after the feed URL has been fetched and decoded")
+
 (nnoo-define-basics nnrss)
 
 ;;; Interface functions
@@ -424,6 +427,8 @@ otherwise return nil."
 		  (erase-buffer)
 		  (mm-enable-multibyte))))
       (goto-char (point-min))
+
+      (run-hooks 'nnrss-rss-format-hook)
 
       ;; Because xml-parse-region can't deal with anything that isn't
       ;; xml and w3-parse-buffer can't deal with some xml, we have to
