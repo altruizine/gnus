@@ -87,6 +87,15 @@ used."
 This is used for cid: URLs, and the function is called with the
 cid: URL as the argument.")
 
+(defface shr-strike-through '((t (:strike-through t)))
+  "Font for <s> elements."
+  :group 'shr)
+
+(defface shr-link
+  '((t (:underline t :foreground "yellow" :background "black")))
+  "Font for link elements."
+  :group 'shr)
+
 ;;; Internal variables.
 
 (defvar shr-folding-mode nil)
@@ -99,6 +108,7 @@ cid: URL as the argument.")
 (defvar shr-kinsoku-shorten nil)
 (defvar shr-table-depth 0)
 (defvar shr-stylesheet nil)
+(defvar shr-base nil)
 
 (defvar shr-map
   (let ((map (make-sparse-keymap)))
@@ -127,6 +137,7 @@ cid: URL as the argument.")
   (setq shr-content-cache nil)
   (let ((shr-state nil)
 	(shr-start nil)
+	(shr-base nil)
 	(shr-width (or shr-width (window-width))))
     (shr-descend (shr-transform-dom dom))))
 
@@ -392,6 +403,19 @@ redirects somewhere else."
 	 (forward-char 1))))
     (not failed)))
 
+(defun shr-expand-url (url)
+  (cond
+   ;; Absolute URL.
+   ((or (not url)
+	(string-match "\\`[a-z]*:" url)
+	(not shr-base))
+    url)
+   ((and (not (string-match "/\\'" shr-base))
+	 (not (string-match "\\`/" url)))
+    (concat shr-base "/" url))
+   (t
+    (concat shr-base url))))
+
 (defun shr-ensure-newline ()
   (unless (zerop (current-column))
     (insert "\n")))
@@ -572,6 +596,7 @@ START, and END.  Note that START and END should be merkers."
    :help-echo (if title (format "%s (%s)" url title) url)
    :keymap shr-map
    url)
+  (put-text-property start (point) 'face 'shr-link)
   (put-text-property start (point) 'shr-url url))
 
 (defun shr-encode-url (url)
@@ -719,6 +744,16 @@ ones, in case fg and bg are nil."
 (defun shr-tag-script (cont)
   )
 
+(defun shr-tag-sup (cont)
+  (let ((start (point)))
+    (shr-generic cont)
+    (put-text-property start (point) 'display '(raise 0.5))))
+
+(defun shr-tag-sub (cont)
+  (let ((start (point)))
+    (shr-generic cont)
+    (put-text-property start (point) 'display '(raise -0.5))))
+
 (defun shr-tag-label (cont)
   (shr-generic cont)
   (shr-ensure-paragraph))
@@ -735,6 +770,9 @@ ones, in case fg and bg are nil."
   (shr-generic cont)
   (shr-ensure-newline))
 
+(defun shr-tag-s (cont)
+  (shr-fontize-cont cont 'shr-strike-through))
+
 (defun shr-tag-b (cont)
   (shr-fontize-cont cont 'bold))
 
@@ -749,9 +787,6 @@ ones, in case fg and bg are nil."
 
 (defun shr-tag-u (cont)
   (shr-fontize-cont cont 'underline))
-
-(defun shr-tag-s (cont)
-  (shr-fontize-cont cont 'strike-through))
 
 (defun shr-parse-style (style)
   (when style
@@ -773,13 +808,16 @@ ones, in case fg and bg are nil."
 		    plist)))))
       plist)))
 
+(defun shr-tag-base (cont)
+  (setq shr-base (cdr (assq :href cont))))
+
 (defun shr-tag-a (cont)
   (let ((url (cdr (assq :href cont)))
         (title (cdr (assq :title cont)))
 	(start (point))
 	shr-start)
     (shr-generic cont)
-    (shr-urlify (or shr-start start) url title)))
+    (shr-urlify (or shr-start start) (shr-expand-url url) title)))
 
 (defun shr-tag-object (cont)
   (let ((start (point))
@@ -792,7 +830,7 @@ ones, in case fg and bg are nil."
 	(setq url (or url (cdr (assq :value (cdr elem)))))))
     (when url
       (shr-insert " [multimedia] ")
-      (shr-urlify start url))
+      (shr-urlify start (shr-expand-url url)))
     (shr-generic cont)))
 
 (defun shr-tag-video (cont)
@@ -800,7 +838,7 @@ ones, in case fg and bg are nil."
 	(url (cdr (assq :src cont)))
 	(start (point)))
     (shr-tag-img nil image)
-    (shr-urlify start url)))
+    (shr-urlify start (shr-expand-url url))))
 
 (defun shr-tag-img (cont &optional url)
   (when (or url
@@ -810,7 +848,7 @@ ones, in case fg and bg are nil."
 	       (not (eq shr-state 'image)))
       (insert "\n"))
     (let ((alt (cdr (assq :alt cont)))
-	  (url (or url (cdr (assq :src cont)))))
+	  (url (shr-expand-url (or url (cdr (assq :src cont))))))
       (let ((start (point-marker)))
 	(when (zerop (length alt))
 	  (setq alt "*"))
@@ -839,10 +877,13 @@ ones, in case fg and bg are nil."
 	  (shr-put-image (shr-get-image-data url) alt))
 	 (t
 	  (insert alt)
-	  (ignore-errors
-	    (url-retrieve (shr-encode-url url) 'shr-image-fetched
-			  (list (current-buffer) start (point-marker))
-			  t))))
+	  (funcall
+	   (if (fboundp 'url-queue-retrieve)
+	       'url-queue-retrieve
+	     'url-retrieve)
+	   (shr-encode-url url) 'shr-image-fetched
+	   (list (current-buffer) start (point-marker))
+	   t)))
 	(put-text-property start (point) 'keymap shr-map)
 	(put-text-property start (point) 'shr-alt alt)
 	(put-text-property start (point) 'image-url url)

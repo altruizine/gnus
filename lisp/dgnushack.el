@@ -147,6 +147,9 @@
       (defvar help-echo-owns-message))
     (unless (fboundp 'url-retrieve-synchronously)
       (defalias 'url-retrieve-synchronously 'url-retrieve))
+    (unless (fboundp 'url-queue-retrieve)
+      (defun url-queue-retrieve (url callback &optional cbargs silent)
+	(url-retrieve url callback cbargs)))
     (autoload 'Info-directory "info" nil t)
     (autoload 'Info-index "info" nil t)
     (autoload 'Info-index-next "info" nil t)
@@ -272,12 +275,19 @@ dgnushack-compile-verbosely.  All other users should continue to use
 dgnushack-compile."
   (dgnushack-compile t))
 
-(defun dgnushack-compile (&optional warn)
+(defun dgnushack-compile-error-on-warn ()
+  "Call dgnushack-compile with minimal warnings, but with error-on-warn ENABLED.
+This means that every warning will be reported as an error."
+  (unless (dgnushack-compile nil t)
+    (error "Error during byte compilation (warnings were reported as errors!).")))
+
+(defun dgnushack-compile (&optional warn error-on-warn)
   ;;(setq byte-compile-dynamic t)
   (unless warn
     (setq byte-compile-warnings
 	  '(free-vars unresolved callargs redefine suspicious)))
   (let ((files (directory-files srcdir nil "^[^=].*\\.el$"))
+	(compilesuccess t)
 	;;(byte-compile-generate-call-tree t)
 	file elc)
     ;; Avoid barfing (from gnus-xmas) because the etc directory is not yet
@@ -330,8 +340,14 @@ dgnushack-compile."
       (when (or (not (file-exists-p
 		      (setq elc (concat (file-name-nondirectory file) "c"))))
 		(file-newer-than-file-p file elc))
-	(ignore-errors
-	  (byte-compile-file file))))))
+	(if error-on-warn
+	    (let ((byte-compile-error-on-warn t))
+	      (unless (ignore-errors
+			(byte-compile-file file))
+		(setq compilesuccess nil)))
+	  (ignore-errors
+	    (byte-compile-file file)))))
+    compilesuccess))
 
 (defun dgnushack-recompile ()
   (require 'gnus)

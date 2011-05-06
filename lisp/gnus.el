@@ -293,7 +293,7 @@ is restarted, and sometimes reloaded."
   :link '(custom-manual "(gnus)Exiting Gnus")
   :group 'gnus)
 
-(defconst gnus-version-number "0.16"
+(defconst gnus-version-number "0.18"
   "Version number for this version of Gnus.")
 
 (defconst gnus-version (format "No Gnus v%s" gnus-version-number)
@@ -1106,16 +1106,18 @@ be set in `.emacs' instead."
     (set-buffer-modified-p t)))
 
 (defun gnus-splash-svg-color-symbols (list)
-  "Do color-symbol search-and-replace in svg file"
+  "Do color-symbol search-and-replace in svg file."
   (let ((type (plist-get (cdr list) :type))
         (file (plist-get (cdr list) :file))
         (color-symbols (plist-get (cdr list) :color-symbols)))
     (if (string= type "svg")
-        (let ((data (with-temp-buffer (insert-file file) (buffer-string))))
+        (let ((data (with-temp-buffer (insert-file-contents file)
+                                      (buffer-string))))
           (mapc (lambda (rule)
                   (setq data (replace-regexp-in-string
                               (concat "fill:" (car rule))
-                              (concat "fill:" (cdr rule)) data))) color-symbols)
+                              (concat "fill:" (cdr rule)) data)))
+                color-symbols)
           (cons (car list) (list :type type :data data)))
        list)))
 
@@ -1872,7 +1874,10 @@ total number of articles in the group.")
  :function-document
  "Whether this group should be ignored by the registry."
  :variable gnus-registry-ignored-groups
- :variable-default nil
+ :variable-default (mapcar
+                    (lambda (g) (list g t))
+                    '("delayed$" "drafts$" "queue$" "INBOX$"
+                      "^nnmairix:" "archive"))
  :variable-document
  "*Groups in which the registry should be turned off."
  :variable-group gnus-registry
@@ -2904,7 +2909,8 @@ gnus-registry.el will populate this if it's loaded.")
       gnus-agent-save-active gnus-agent-method-p
       gnus-agent-get-undownloaded-list gnus-agent-fetch-session
       gnus-summary-set-agent-mark gnus-agent-save-group-info
-      gnus-agent-request-article gnus-agent-retrieve-headers)
+      gnus-agent-request-article gnus-agent-retrieve-headers
+      gnus-agent-store-article gnus-agent-group-covered-p)
      ("gnus-agent" :interactive t
       gnus-unplugged gnus-agentize gnus-agent-batch)
      ("gnus-vm" :interactive t gnus-summary-save-in-vm

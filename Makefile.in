@@ -44,10 +44,13 @@ COMMIT_STRING = $(CODENAME)Gnus v$(VERSION) is released.
 
 all: lick info
 
-fail-on-warning: all
+fail-on-warning: lick-fail-on-warning info
 
 lick:
 	cd lisp && $(MAKE) EMACS="$(EMACS)" lispdir="$(lispdir)" all
+
+lick-fail-on-warning:
+	cd lisp && $(MAKE) EMACS="$(EMACS)" lispdir="$(lispdir)" fail-on-warning
 
 install:
 	cd lisp && $(MAKE) EMACS="$(EMACS)" lispdir="$(lispdir)" install
@@ -67,6 +70,9 @@ uninstall:
 
 GNUS-NEWS: texi/gnus-news.texi
 	cd texi && $(MAKE) GNUS-NEWS
+
+check:	
+	cd lisp && $(MAKE) EMACS="$(EMACS)" lispdir="$(lispdir)" check
 
 # Rule for Lars and nobody else.
 some:
