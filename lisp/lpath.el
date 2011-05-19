@@ -26,6 +26,7 @@
     (defun netrc-machine-user-or-password (mode authinfo-file-or-list machines
 						ports defaults))
     (defun netrc-parse (file))
+    (defun shr-put-image (data alt))
     (maybe-fbind
      '(Info-index
        Info-index-next Info-menu bbdb-complete-name bookmark-default-handler
@@ -51,6 +52,7 @@
 					      ports defaults))
   (defun netrc-parse (file))
   (defun split-line (&optional arg))
+  (defun shr-put-image (data alt))
   (eval-after-load "rmail"
     '(defun rmail-toggle-header (&optional arg)))
   (maybe-fbind
@@ -65,13 +67,13 @@
      image-type-available-p insert-image libxml-parse-html-region
      mail-abbrevs-setup make-mode-line-mouse-map make-network-process
      mouse-minibuffer-check mouse-movement-p mouse-scroll-subr overlay-lists
-     pgg-display-output-buffer posn-point posn-window put-image
+     pgg-display-output-buffer posn-point posn-window process-type put-image
      read-char-choice read-event recenter-top-bottom
      rmail-msg-restore-non-pruned-header rmail-swap-buffers-maybe
-     select-safe-coding-system shr-insert-document sort-coding-systems
-     track-mouse ucs-to-char url-generic-parse-url url-insert-file-contents
-     vcard-pretty-print w3-parse-buffer w3m-detect-meta-charset w3m-region
-     window-edges))
+     select-safe-coding-system set-network-process-option shr-insert-document
+     sort-coding-systems track-mouse ucs-to-char url-generic-parse-url
+     url-insert-file-contents vcard-pretty-print w3-parse-buffer
+     w3m-detect-meta-charset w3m-region window-edges))
   (maybe-bind
    '(adaptive-fill-first-line-regexp
      buffer-display-table buffer-save-without-query completion-styles
